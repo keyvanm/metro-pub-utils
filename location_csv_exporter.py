@@ -1,12 +1,26 @@
 import csv
 import os
+import pickle
 
 from utils import grab_access_token, get_all_locations, get_location_by_uuid
+
+
+def cached_get_all_locations(access_token):
+    if os.path.isfile('./out/all_locations_uuid.pickle'):
+        with open('./out/all_locations_uuid.pickle') as f:
+            return pickle.load(f)
+
+    all_locations_uuid = get_all_locations(access_token)
+    with open('./out/all_locations_uuid.pickle', 'w') as f:
+        pickle.dump(all_locations_uuid, f)
+
+    return all_locations_uuid
+
 
 if __name__ == "__main__":
     access_token = grab_access_token()
 
-    all_locations_uuid = get_all_locations(access_token)
+    all_locations_uuid = cached_get_all_locations(access_token)
 
     locations_info = []
     for location_uuid in all_locations_uuid:
