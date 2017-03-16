@@ -48,8 +48,8 @@ def get_location_by_uuid(uuid_str, access_token=None):
     location_request_url = API_URL + "/locations/" + uuid_str
     r = requests.get(location_request_url, headers=headers)
     location_info = r.json()
-    # r = requests.get(location_request_url + "/tags", headers=headers)
-    # location_types = [tag["title"] for tag in r.json()['items']]
+    r = requests.get(location_request_url + "/tags", headers=headers)
+    location_types = [tag["title"] for tag in r.json()['items'] if tag['predicate'] == "describes"]
 
     return {
         "business name": encode_if_possible(location_info['title']),
@@ -58,5 +58,5 @@ def get_location_by_uuid(uuid_str, access_token=None):
         "website": encode_if_possible(location_info['website']),
         "facebook": encode_if_possible(location_info['fb_url']),
         "twitter": encode_if_possible(location_info['twitter_username']),
-        "location type": encode_if_possible(" / ".join(location_info['location_types']))
+        "location type": encode_if_possible(" | ".join(location_types))
     }
