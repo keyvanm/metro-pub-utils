@@ -1,22 +1,22 @@
 import csv
 import os
-import pickle
 
 from requests.exceptions import ConnectionError
 
-from utils import grab_access_token, get_all_locations, get_location_by_uuid
+from utils import grab_access_token, get_location_by_uuid, cached_get_all_locations, encode_if_possible, \
+    add_location_types_from_tags
 
 
-def cached_get_all_locations(access_token):
-    if os.path.isfile('./out/all_locations_uuid.pickle'):
-        with open('./out/all_locations_uuid.pickle') as f:
-            return pickle.load(f)
-
-    all_locations_uuid = get_all_locations(access_token)
-    with open('./out/all_locations_uuid.pickle', 'w') as f:
-        pickle.dump(all_locations_uuid, f)
-
-    return all_locations_uuid
+def process_location_for_csv_export(location):
+    return {
+        "business name": encode_if_possible(location['title']),
+        "telephone": encode_if_possible(location['phone']),
+        "email": encode_if_possible(location['email']),
+        "website": encode_if_possible(location['website']),
+        "facebook": encode_if_possible(location['fb_url']),
+        "twitter": encode_if_possible(location['twitter_username']),
+        "location type": encode_if_possible(" | ".join(location['location_types']))
+    }
 
 
 if __name__ == "__main__":
@@ -46,7 +46,9 @@ if __name__ == "__main__":
                 print "Progress: {i}/{length}".format(i=i + 1, length=len(all_locations_uuid))
             try:
                 location = get_location_by_uuid(location_uuid, access_token)
-                writer.writerow([location[header] for header in header_row])
+                add_location_types_from_tags(location, access_token)
+                processed_location = process_location_for_csv_export(location)
+                writer.writerow([processed_location[header] for header in header_row])
             except ConnectionError as e:
                 print e.message
                 failed_location_uuids.append(location_uuid)

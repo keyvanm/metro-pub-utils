@@ -1,4 +1,6 @@
 import os
+import pickle
+
 import requests
 
 ROOT_URL = os.environ['ROOT_URL']
@@ -34,6 +36,18 @@ def get_all_locations(access_token=None):
     return locations
 
 
+def cached_get_all_locations(access_token):
+    if os.path.isfile('./out/all_locations_uuid.pickle'):
+        with open('./out/all_locations_uuid.pickle') as f:
+            return pickle.load(f)
+
+    all_locations_uuid = get_all_locations(access_token)
+    with open('./out/all_locations_uuid.pickle', 'w') as f:
+        pickle.dump(all_locations_uuid, f)
+
+    return all_locations_uuid
+
+
 def encode_if_possible(unicode_string):
     if unicode_string is None:
         return unicode_string
@@ -47,16 +61,14 @@ def get_location_by_uuid(uuid_str, access_token=None):
 
     location_request_url = API_URL + "/locations/" + uuid_str
     r = requests.get(location_request_url, headers=headers)
-    location_info = r.json()
-    r = requests.get(location_request_url + "/tags", headers=headers)
-    location_types = [tag["title"] for tag in r.json()['items'] if tag['predicate'] == "describes"]
+    return r.json()
 
-    return {
-        "business name": encode_if_possible(location_info['title']),
-        "telephone": encode_if_possible(location_info['phone']),
-        "email": encode_if_possible(location_info['email']),
-        "website": encode_if_possible(location_info['website']),
-        "facebook": encode_if_possible(location_info['fb_url']),
-        "twitter": encode_if_possible(location_info['twitter_username']),
-        "location type": encode_if_possible(" | ".join(location_types))
-    }
+
+def add_location_types_from_tags(location, access_token=None):
+    if not access_token:
+        access_token = grab_access_token()
+    headers = {'Authorization': "Bearer " + access_token}
+
+    location_tags_request_url = API_URL + "/locations/" + location['uuid'] + "/tags"
+    r = requests.get(location_tags_request_url, headers=headers)
+    location['location_types'] = [tag["title"] for tag in r.json()['items'] if tag['predicate'] == "describes"]
