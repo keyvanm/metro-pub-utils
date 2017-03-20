@@ -8,6 +8,7 @@ from utils import grab_access_token, get_location_by_uuid, cached_get_all_locati
 
 
 FILTER = '_Filter: Shop Type'
+DEBUG = False
 
 
 def process_location_for_csv_export(location):
@@ -24,7 +25,7 @@ if __name__ == "__main__":
 
     print "Access Token obtained"
 
-    all_locations_uuid = cached_get_all_locations(access_token)
+    all_locations_uuid = cached_get_all_locations(access_token, debug=DEBUG)
 
     print "All location UUIDs obtained ({})".format(len(all_locations_uuid))
 

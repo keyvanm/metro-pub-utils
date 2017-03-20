@@ -7,6 +7,8 @@ ROOT_URL = os.environ['ROOT_URL']
 API_URL = ROOT_URL + os.environ['INSTANCE_ID']
 TOKEN_URL = os.environ['TOKEN_URL']
 
+NUM_ITEMS_IN_DEBUG = 20
+
 
 def grab_access_token():
     data = {
@@ -25,7 +27,7 @@ def get_all_locations(access_token=None, debug=False):
 
     locations = []
     url = API_URL + "/locations?"
-    query_params = "fields=uuid&rpp=100" if not debug else "fields=uuid&rpp=10"
+    query_params = "fields=uuid&rpp=100" if not debug else "fields=uuid&rpp={}".format(NUM_ITEMS_IN_DEBUG)
 
     while query_params:
         r = requests.get(url + query_params, headers=headers)
@@ -40,7 +42,7 @@ def cached_get_all_locations(access_token, debug=False):
     filepath = './out/all_locations_uuid_{iid}.pickle'.format(iid=os.environ['INSTANCE_ID'])
     if os.path.isfile(filepath):
         with open(filepath) as f:
-            return pickle.load(f) if not debug else pickle.load(f)[:10]
+            return pickle.load(f) if not debug else pickle.load(f)[:NUM_ITEMS_IN_DEBUG]
 
     all_locations_uuid = get_all_locations(access_token, debug)
     if not debug:
@@ -106,16 +108,44 @@ def get_category(category_url, access_token=None):
 
 
 def add_location_guide_tags(location, access_token=None):
+    location['shop_style_tags'] = []
+    location['shop_type_tags'] = []
+    location['shop_categories_tags'] = []
+    location['consumer_type_tags'] = []
+    location['wedding_resources_tags'] = []
+    location['neighborhoods_tags'] = []
+
     if not access_token:
         access_token = grab_access_token()
 
     location_url = API_URL + "/locations/" + location['uuid']
     tags = get_tags_for_item(location_url, access_token)
-    location['tags'] = [tag['title'] for tag in tags]
+    location['tags'] = []
 
     categories_set = set()
     for tag in tags:
+        tag_belongs_to_category = False
         tag_categories = get_tag_category_titles(tag, access_token)
         categories_set.update(tag_categories)
+        if "Shop & Style tags" in tag_categories:
+            location['shop_style_tags'].append(tag['title'])
+            tag_belongs_to_category = True
+        if "_Filter: Shop Type" in tag_categories:
+            location['shop_type_tags'].append(tag['title'])
+            tag_belongs_to_category = True
+        if "_Filter: Shop Categories" in tag_categories:
+            location['shop_categories_tags'].append(tag['title'])
+            tag_belongs_to_category = True
+        if "_Filter: Consumer Type" in tag_categories:
+            location['consumer_type_tags'].append(tag['title'])
+            tag_belongs_to_category = True
+        if "_Filter: Wedding Resources" in tag_categories:
+            location['wedding_resources_tags'].append(tag['title'])
+            tag_belongs_to_category = True
+        if "_Filter: Neighborhoods" in tag_categories:
+            location['neighborhoods_tags'].append(tag['title'])
+            tag_belongs_to_category = True
+        if not tag_belongs_to_category:
+            location['tags'].append(tag['title'])
 
     location['categories'] = categories_set
