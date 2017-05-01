@@ -7,7 +7,7 @@ ROOT_URL = os.environ['ROOT_URL']
 API_URL = ROOT_URL + os.environ['INSTANCE_ID']
 TOKEN_URL = os.environ['TOKEN_URL']
 
-NUM_ITEMS_IN_DEBUG = 20
+NUM_ITEMS_IN_DEBUG = 50
 
 
 def grab_access_token():
@@ -71,12 +71,14 @@ def get_location_by_uuid(uuid_str, access_token=None):
     return r.json()
 
 
-def get_tags_for_item(item_url, access_token=None):
+def get_tags_for_item(item_url, internal_tags=False, access_token=None):
     if not access_token:
         access_token = grab_access_token()
     headers = {'Authorization': "Bearer " + access_token}
 
     tags_url = item_url + "/tags"
+    if internal_tags:
+        tags_url += "?state=internal"
     return requests.get(tags_url, headers=headers).json()['items']
 
 
@@ -107,19 +109,15 @@ def get_category(category_url, access_token=None):
     return requests.get(category_url, headers=headers).json()
 
 
-def add_location_guide_tags(location, access_token=None):
-    location['shop_style_tags'] = []
-    location['shop_type_tags'] = []
-    location['shop_categories_tags'] = []
-    location['consumer_type_tags'] = []
-    location['wedding_resources_tags'] = []
-    location['neighborhoods_tags'] = []
+def add_location_guide_tags(location, categories, access_token=None):
+    for _, cat_header in categories:
+        location[cat_header] = []
 
     if not access_token:
         access_token = grab_access_token()
 
     location_url = API_URL + "/locations/" + location['uuid']
-    tags = get_tags_for_item(location_url, access_token)
+    tags = get_tags_for_item(location_url, access_token=access_token)
     location['tags'] = []
 
     categories_set = set()
@@ -127,24 +125,12 @@ def add_location_guide_tags(location, access_token=None):
         tag_belongs_to_category = False
         tag_categories = get_tag_category_titles(tag, access_token)
         categories_set.update(tag_categories)
-        if "Shop & Style tags" in tag_categories:
-            location['shop_style_tags'].append(tag['title'])
-            tag_belongs_to_category = True
-        if "_Filter: Shop Type" in tag_categories:
-            location['shop_type_tags'].append(tag['title'])
-            tag_belongs_to_category = True
-        if "_Filter: Shop Categories" in tag_categories:
-            location['shop_categories_tags'].append(tag['title'])
-            tag_belongs_to_category = True
-        if "_Filter: Consumer Type" in tag_categories:
-            location['consumer_type_tags'].append(tag['title'])
-            tag_belongs_to_category = True
-        if "_Filter: Wedding Resources" in tag_categories:
-            location['wedding_resources_tags'].append(tag['title'])
-            tag_belongs_to_category = True
-        if "_Filter: Neighborhoods" in tag_categories:
-            location['neighborhoods_tags'].append(tag['title'])
-            tag_belongs_to_category = True
+
+        for cat_name, cat_header in categories:
+            if cat_name in tag_categories:
+                location[cat_header].append(tag['title'])
+                tag_belongs_to_category = True
+
         if not tag_belongs_to_category:
             location['tags'].append(tag['title'])
 

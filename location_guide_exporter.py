@@ -7,8 +7,13 @@ from utils import grab_access_token, get_location_by_uuid, cached_get_all_locati
     add_location_guide_tags
 
 
-FILTER = '_Filter: Shop Type'
+FILTER = '_Filter: Wedding Resources'
 DEBUG = False
+CATEGORIES = [
+    ("_Filter: Wedding Resources", 'resources_tags'),
+    ("_Filter: Capacity", 'capacity_tags'),
+    ("_Filter: Reception Sites", 'reception_sites_tags'),
+]
 
 
 def process_location_for_csv_export(location):
@@ -31,7 +36,7 @@ if __name__ == "__main__":
 
     sample_uuid = all_locations_uuid[0]
     location = get_location_by_uuid(sample_uuid, access_token)
-    add_location_guide_tags(location, access_token)
+    add_location_guide_tags(location, CATEGORIES, access_token)
 
     header_row = location.keys()
 
@@ -51,7 +56,7 @@ if __name__ == "__main__":
                 print "Progress: {i}/{length}".format(i=i + 1, length=len(all_locations_uuid))
             try:
                 location = get_location_by_uuid(location_uuid, access_token)
-                add_location_guide_tags(location, access_token)
+                add_location_guide_tags(location, CATEGORIES, access_token)
                 if FILTER in location['categories']:
                     processed_location = process_location_for_csv_export(location)
                     writer.writerow([processed_location[header] for header in header_row])
