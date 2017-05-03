@@ -20,6 +20,81 @@ def grab_access_token():
     return r.json()['access_token']
 
 
+def get_all_tags(fields, access_token=None):
+    if not access_token:
+        access_token = grab_access_token()
+    headers = {'Authorization': "Bearer " + access_token}
+
+    tags_list = []
+    url = API_URL + "/tags?"
+    query_params = "fields={fields}&rpp=100".format(fields="-".join(fields))
+
+    while query_params:
+        r = requests.get(url + query_params, headers=headers)
+        payload = r.json()
+        tags_list.extend(payload['items'])
+        query_params = payload.get('next')
+
+    return tags_list
+
+class Tree(object):
+    def __init__(self, value, id):
+        self.value = value
+        self.id = id
+        self.children = []
+
+    def add_child(self, subtree):
+        self.children.append(subtree)
+
+    def find_child(self, id):
+        if self.id == id:
+            return self
+        for child in self.children:
+            result = child.find_child(id)
+            if result:
+                return result
+
+    def __repr__(self):
+        return "{self.value} ({self.id}) {self.children}".format(self=self)
+
+
+def build_sections_tree(section_list, result=None):
+    if result is None:
+        result = Tree('root', None)
+
+    leftovers = []
+    for section in section_list:
+        parent = result.find_child(section[2])
+        if parent:
+            parent.add_child(Tree(section[0], section[1]))
+        else:
+            leftovers.append(section)
+    if not leftovers:
+        return result
+    if leftovers == section_list:
+        print "WEIRD", leftovers
+        return result
+    return build_sections_tree(leftovers, result)
+
+
+def get_all_sections(access_token=None):
+    if not access_token:
+        access_token = grab_access_token()
+    headers = {'Authorization': "Bearer " + access_token}
+
+    section_list = []
+    url = API_URL + "/sections?"
+    query_params = "fields=title-uuid-parentid&rpp=100"#&parent=root"
+
+    while query_params:
+        r = requests.get(url + query_params, headers=headers)
+        payload = r.json()
+        section_list.extend(payload['items'])
+        query_params = payload.get('next')
+
+    return section_list
+
+
 def get_all_locations(access_token=None, debug=False):
     if not access_token:
         access_token = grab_access_token()
